@@ -1,4 +1,4 @@
-#include "speed_hack.hpp"
+#include "timer.hpp"
 
 void clear() {
 	COORD topLeft = { 0, 0 };
