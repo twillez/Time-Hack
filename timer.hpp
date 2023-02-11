@@ -13,7 +13,6 @@
 
 namespace Helper
 {
-	// custom helper function..
 	void WriteTextToFile(std::string str)
 	{
 		
@@ -22,7 +21,6 @@ namespace Helper
 
 namespace Speedhack
 {
-	// native original functions
 	extern"C" {
 		static BOOL(WINAPI* originalQueryPerformanceCounter)(LARGE_INTEGER* performanceCounter) = QueryPerformanceCounter;
 		static DWORD(WINAPI* originalGetTickCount)() = GetTickCount;
@@ -30,7 +28,6 @@ namespace Speedhack
 		static DWORD(WINAPI* originalTimeGetTime)() = timeGetTime;
 	}
 
-	// tried to follow CE :")
 	class TSimpleLock
 	{
 	public:
@@ -107,11 +104,8 @@ namespace Speedhack
 	SpeedHackClass<ULONGLONG> h_GetTickCount64;
 	SpeedHackClass<DWORD> h_GetTime;
 
-	double lastspeed = 1.0; // Game speed lastspeed
-
-	// QueryPerformanceCounter is generally what is used to calculate how much time has passed between frames. It will set the performanceCounter to the amount of micro seconds the machine has been running
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx
-
+	double lastspeed = 1.0; 
+	
 	BOOL WINAPI newQueryPerformanceCounter(LARGE_INTEGER* counter) {
 		lock(QPCLock);
 		LARGE_INTEGER currentLi;
@@ -124,9 +118,6 @@ namespace Speedhack
 		return true;
 	}
 
-	// GetTickCount can also be used to calculate time between frames, but is used less since it's less accurate than QueryPerformanceCounter
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms724408%28v=vs.85%29.aspx
-
 	DWORD WINAPI newGetTickCount() {
 		lock(GTCLock);
 		auto res = h_GetTickCount.get(originalGetTickCount());
@@ -135,9 +126,6 @@ namespace Speedhack
 		return res;																					// Return false tick count
 	}
 
-	// GetTickCount64 can also be used to calculate time between frames, but is used less since it's less accurate than QueryPerformanceCounter
-	//https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-gettickcount64
-
 	ULONGLONG WINAPI newGetTickCount64() {
 		lock(GTCLock);
 		auto res = h_GetTickCount64.get(originalGetTickCount64());
@@ -145,10 +133,7 @@ namespace Speedhack
 
 		return res;
 	}
-
-	// timeGetTime can also be used to caluclate time between frames, as with GetTickCount it isn't as accurate as QueryPerformanceCounter
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/dd757629(v=vs.85).aspx
-
+	
 	DWORD WINAPI newTimeGetTime() {
 		return h_GetTime.get(originalTimeGetTime());
 	}
@@ -156,23 +141,12 @@ namespace Speedhack
 	LARGE_INTEGER initialtime64;
 	LARGE_INTEGER initialoffset64;
 
-	//Called by createremotethread
 	void InitializeSpeedHack(double speed) {
 		lock(QPCLock);
 		lock(GTCLock);
 
 		originalQueryPerformanceCounter(&initialtime64);
 		newQueryPerformanceCounter(&initialoffset64);
-		/*
-		initialOffset = newGetTickCount();
-		initialtime = originalGetTickCount();
-
-
-		initialoffset_tc64 = newGetTickCount64();
-		initialtime_tc64 = originalGetTickCount64();
-
-		prevTime = originalTimeGetTime();
-		falseTime = prevTime;*/
 
 		h_QueryPerformanceCounter = SpeedHackClass<LONGLONG>(initialtime64.QuadPart, initialoffset64.QuadPart, speed);
 		h_GetTickCount = SpeedHackClass<DWORD>(originalGetTickCount(), newGetTickCount(), speed);
@@ -185,12 +159,11 @@ namespace Speedhack
 		unlock(QPCLock);
 	}
 
-	// This should be called when the DLL is Injected. You should call this in a new Thread.
 	void InintDLL(LPVOID hModule)
 	{
 		GTCLock = TSimpleLock();
 		QPCLock = TSimpleLock();
-		// Set initial values for hooked calculations
+
 		originalQueryPerformanceCounter(&initialtime64);
 		initialoffset64 = initialtime64;
 
@@ -199,7 +172,6 @@ namespace Speedhack
 		h_GetTickCount64 = SpeedHackClass<ULONGLONG>(originalGetTickCount64(), originalGetTickCount64());
 		h_GetTime = SpeedHackClass<DWORD>(originalTimeGetTime(), originalTimeGetTime());
 
-		// ah detours; they are awesome!!
 		DisableThreadLibraryCalls((HMODULE)hModule);
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
